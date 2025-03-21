@@ -1,0 +1,62 @@
+name: "Black Duck scan demo"
+
+on:
+  push:
+    branches:
+      - "*"
+
+jobs:
+  
+  debug:
+    runs-on: ubuntu-latest
+    outputs:
+      token-check: ${{ steps.check-bd-token.outputs.status }}
+    
+    steps:
+      - name: Check BD_TOKEN presence
+        id: check-bd-token
+        run: |
+            if [ -z "${{ secrets.BD_TOKEN }}" ]; then
+              echo "::error::BD_TOKEN value is required"
+              exit 1
+            else
+              echo "BD_TOKEN is set"
+              echo "status=ok" >> $GITHUB_OUTPUT
+            fi
+  scan:
+    runs-on:  [ubuntu-latest]
+    steps:
+      # - name: Checkout code
+      #   uses: actions/checkout@v4
+
+      - name: Set up Java 11
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Run Black Duck scan
+        uses: synopsys-sig/blackduck-docker-inspector-action@v1
+        with:
+          blackduck.url: https://bd.matrixopensource.com
+          blackduck.api.token: ${{ secrets.BD_TOKEN }} 
+          docker.image: bkimminich/juice-shop:latest
+          detect.project.name: ${{ github.event.repository.name }}
+          detect.version.name: latest
+
+      # - name: Run BlackDuck Scan
+      #   run: |
+      #     bash <(curl -s -L https://detect.blackduck.com/detect10.sh)   \
+      #     --detect.tools=DOCKER                                       \
+      #     --detect.docker.image=bkimminich/juice-shop:latest          \
+      #     --detect.docker.passthrough.pull=true                       \
+      #     --logging.level.com.synopsys.integration=DEBUG              \
+      #     --detect.blackduck.scan.mode=INTELLIGENT                    \ 
+      #     --blackduck.trust.cert=true                                 \
+      #     --blackduck.url=https://bd.matrixopensource.com             \
+      #     --blackduck.api.token=${{ secrets.BD_TOKEN }}               \
+      #     --detect.project.name=${{ github.event.repository.name }}   \
+      #     --detect.project.version.name=${{ github.head_ref || github.ref_name }} 
